@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="UTF-8"?><NS1:Envelope xmlns:NS1="http://schemas.xmlsoap.org/soap/envelope/"><NS1:Body><NS2:sayHelloResponse xmlns:NS2="urn:examples:helloservice"><BMIMeasurement>underweight</BMIMeasurement></NS2:sayHelloResponse></NS1:Body></NS1:Envelope>

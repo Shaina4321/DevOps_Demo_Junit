@@ -1,0 +1,178 @@
+<project name="DevOps_Demo" default="run" basedir="../.." xmlns:aether="antlib:org.eclipse.aether.ant">
+	
+	<property name="src.dir" value="${basedir}/DevOps_Demo/src"/>
+	<property name="build.dir" value="${basedir}/DevOps_Demo/build"/>
+	<property name="lib.dir" value="${basedir}/DevOps_Demo/lib"/>
+	<property name="classes.dir" value="${build.dir}/classes"/>
+	<property name="jar.dir" value="${build.dir}"/>
+        <property name="path.buildscript" value="DevOps_Demo/Buildscript" />
+	<property name="nexus.jar" value="${basedir}/DevOps_Demo/nexusjar"/>
+
+	<import file="${basedir}/${path.buildscript}/nexus-tasks/aether-ant-tasks.xml" />
+	<aether:pom file="${basedir}/${path.buildscript}/pom.xml" id="pom" />
+
+	<aether:artifacts id="attached">
+	    <aether:artifact file="${build.dir}/${ant.project.name}.jar" />
+	</aether:artifacts>
+	
+	<target name="init">
+	    <tstamp />
+		<echo message="SETUP : ${ENVIRONMENT}"/>
+	    <property file="${basedir}/${path.buildscript}/build_${ENVIRONMENT}.properties" />
+	</target>
+	
+	<target name="resolverepo" description="--> initialize project"> 
+	    <aether:resolve>
+	      <files dir="${lib.dir}" layout="{artifactId}-{version}.{extension}" />
+	    </aether:resolve>
+	</target>
+	
+	<path id="classpath">
+		<fileset dir="${lib.dir}" includes="*.*"/>
+	</path>
+	<property name="main-class"  value="acit.junit.helper.TestRunner"/>
+
+	<target name="run" description="">
+  		<antcall target="mqsicreatebar.buildbar" /> 
+		<antcall target="mqsideploy.deploybar"/>
+  		<antcall target="clean" />
+  		<antcall target="prepare" />
+  		<antcall target="compile" />
+  		<antcall target="jar" />
+   		<antcall target="execute"/>
+    	<antcall target="main"/>  
+	</target>
+
+	<target name="mqsicreatebar.buildbar" depends="init">
+	  	<property name="bar.name" value="DevOps_Demo_App.bar"/>
+		<property name="application.name" value="DevOps_Demo_App"/>
+	  	<exec executable="mqsicreatebar" spawn="false" failonerror="true" vmlauncher="false">
+	  		<arg value="-data" />
+	  		<arg value="${basedir}" />
+	  		<arg value="-b" />
+	  		<arg value="${bar.name}" />
+	  		<arg value="-cleanBuild" />
+	  		<arg value="-p" />
+	  		<arg value="${application.name}" />
+	  		<arg value="-a" />
+	  		<arg value="${application.name}" />
+	  	</exec>
+		
+	  	<echo message="Completed building Broker Archive file - ${bar.name} " />
+	</target>
+
+	<target name="mqsideploy.deploybar" depends="init">
+  		<property name="bar.name" value="DevOps_Demo_App.bar"/>
+		<exec executable="mqsideploy" failonerror="true">
+		      <arg value="${iib.node}" />
+		      <arg value="-e" />
+		      <arg value="${iib.svr}" />
+		      <arg value="-a" />
+		      <arg value="${bar.name}" />
+		      <arg value="-m" />
+		    </exec>
+			
+ 		<echo message="Deployed Broker Archive file - ${bar.name}" /> 
+	</target>
+
+	
+	<target name="mqsioverride.overridebar" depends="init">
+		  	<property name="bar.name" value="DevOps_Demo_App.bar"/>
+			<property name="application.name" value="DevOps_Demo_App"/>
+         	<property name="bar.properties.name" value="${basedir}/${path.buildscript}/baroverride_${ENVIRONMENT}.properties"/>
+		  	<exec executable="mqsiapplybaroverride" spawn="false" failonerror="true" vmlauncher="false">
+		  		<arg value="-b"/>
+                <arg value="${bar.name}"/>
+                <arg value="-p"/>
+                <arg value="${bar.properties.name}"/>
+		  	    <arg value="-k"/>
+		  	    <arg value="${application.name}"/>
+		  	</exec>
+			
+		  	<echo message="Completed overriding Broker Archive file - ${bar.name} " />
+	</target>
+
+
+
+<target name="mqsideploy.remotedeploybar" depends="init">
+  		
+		<exec executable="mqsideploy" failonerror="true">
+		      <arg value="-i" />
+		      <arg value="${iib.rempoteip}" />
+		      <arg value="-p" />
+		      <arg value="${iib.remoteport}" />
+		      <arg value="-e" />
+		      <arg value="${iib.svr}" />
+		      <arg value="-a" />
+		      <arg value="${iib.bar}" />
+		      <arg value="-m" />
+		      <arg value="-w" />
+		      <arg value="600" />
+		    </exec>
+			
+ 		<echo message="Deployed Broker Archive file on remote - ${bar.name}" /> 
+	</target>
+
+	<target name="clean" description="--> clean the project">
+	    <delete includeemptydirs="true" quiet="true">
+	      <fileset dir="${build.dir}" />
+	      <fileset dir="${lib.dir}"/>
+	      <fileset dir="${classes.dir}"/>
+	      <fileset dir="${jar.dir}"/>
+	    </delete>
+	  </target>
+	
+	
+	<target name="prepare" depends="clean">
+		<mkdir dir="${build.dir}"/>
+		<mkdir dir="${classes.dir}"/>
+		<mkdir dir="${jar.dir}"/>
+	</target>
+
+	<target name="compile" depends="prepare,resolverepo">  
+		<javac srcdir="${src.dir}" destdir="${classes.dir}" classpathRef="classpath"/>  
+	</target>
+
+	<target name="jar" depends="compile">  
+		<jar destfile="${jar.dir}/${ant.project.name}.jar" basedir="${classes.dir}">
+			<manifest>
+		 		<attribute name="Main-Class" value="${main-class}"/>
+		  	</manifest>
+	  	</jar>
+	</target>
+
+	<target name="execute" depends="jar">	 
+	  	<java fork="true" classname="${main-class}">
+    		<classpath>
+        		<path refid="classpath"/>
+       	 		<path location="${jar.dir}/${ant.project.name}.jar"/>
+    		</classpath>
+		</java>
+	</target>  
+	
+	<target name="install" depends="execute" description="--> install to local Maven repository">
+	    <aether:install pomref="pom" artifactsref="attached" />
+	  </target>
+
+	  <target name="deploy" depends="install" description="--> deploy to remote Maven repository">
+	    <aether:deploy pomref="pom" artifactsref="attached">
+	      <remoterepo refid="dev"/>
+	  </aether:deploy>
+	  </target>
+
+	<target name="junit" depends="main">	                
+	                <mkdir dir="${basedir}/junitreports"/>
+	                <junit haltonfailure="false" printsummary="true">
+	                                <classpath>
+	                                        <path refid="classpath"/>
+	                                        <pathelement location="${build.dir}/DevOps_Demo.jar"/>
+	                                </classpath>
+	                 <test name="acit.junit.test.DevOps_Demo_TestCases"   todir="${basedir}/junitreports"></test>                         
+	                        <formatter type="xml"/>
+	                </junit>
+	          </target>
+	
+	<target name="main" depends="deploy">
+		<echo message="main target completed.." />
+	</target>
+</project>
