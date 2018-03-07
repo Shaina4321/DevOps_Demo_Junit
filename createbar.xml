@@ -1,0 +1,19 @@
+	<project name="DevOps_Demo" default="run" xmlns:aether="antlib:org.eclipse.aether.ant">
+	<target name="mqsicreatebar.buildbar">
+	  	<property name="bar.name" value="DevOps_Demo_App.bar"/>
+		<property name="application.name" value="DevOps_Demo_App"/>
+		<property name="basedir" value="/var/jenkins_home/workspace/CheckoutCode/Demo_App/"/>
+	  	<exec executable="mqsicreatebar" spawn="false" failonerror="true" vmlauncher="false">
+	  		<arg value="-data" />
+	  		<arg value="${basedir}" />
+	  		<arg value="-b" />
+	  		<arg value="${bar.name}" />
+	  		<arg value="-cleanBuild" />
+	  		<arg value="-p" />
+	  		<arg value="${application.name}" />
+	  		<arg value="-a" />
+	  		<arg value="${application.name}" />
+	  	</exec>
+		</target>
+		</project>
+		
